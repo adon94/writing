@@ -6,7 +6,7 @@ const DynamicDraft = dynamic(() => import("@/components/DraftEditor"), {
 
 export default function Home() {
   return (
-    <main className="min-h-screen w-[600px] mx-auto flex justify-start items-end relative">
+    <main className="min-h-screen flex justify-start items-end relative">
       <DynamicDraft />
     </main>
   );

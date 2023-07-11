@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import dynamic from "next/dynamic";
-import { ContentState, EditorState, convertToRaw } from "draft-js";
+import { Editor, EditorState, ContentState, convertToRaw } from "draft-js";
 import draftToHtml from "draftjs-to-html";
 import htmlToDraft from "html-to-draftjs";
 
-const Editor = dynamic(
-  () => import("react-draft-wysiwyg").then((module) => module.Editor),
-  {
-    ssr: false,
-  }
-);
-
 export default function DraftEditor() {
-  const [value, setValue] = useState(() => {
+  const editorRef = useRef<any>(null);
+  const [editorState, setEditorState] = useState(() => {
     // Load editor state from local storage or use a default state
     const savedEditorState = window.localStorage.getItem("content");
     return savedEditorState
@@ -25,9 +18,9 @@ export default function DraftEditor() {
   });
 
   const save = useCallback(() => {
-    const content = draftToHtml(convertToRaw(value.getCurrentContent()));
-    window.localStorage.setItem("content", content as string);
-  }, [value]);
+    const content = draftToHtml(convertToRaw(editorState.getCurrentContent()));
+    window.localStorage.setItem("content", content);
+  }, [editorState]);
 
   function scrollToCurrentLine() {
     const selection = window.getSelection();
@@ -43,26 +36,44 @@ export default function DraftEditor() {
     }
   }
 
+  const isInitialFocus = useRef(true);
+
+  useEffect(() => {
+    if (editorRef.current && isInitialFocus.current) {
+      editorRef.current.focus();
+      const newEditorState = EditorState.moveFocusToEnd(editorState);
+      isInitialFocus.current = false;
+      setEditorState(newEditorState);
+      const editorElement = editorRef.current?.editorContainer;
+      if (editorElement) {
+        console.log(editorElement.scrollHeight);
+        editorElement.scrollTop = editorElement.scrollHeight;
+      }
+    }
+  }, [editorState]);
+
   useEffect(() => {
     save();
-  }, [value, save]);
+  }, [editorState, save]);
 
-  function handleChange(editorState: any) {
-    setValue(editorState);
+  function handleChange(newEditorState: any) {
+    setEditorState(newEditorState);
     scrollToCurrentLine();
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <Editor
-        editorState={value}
-        wrapperClassName="h-full p-20"
-        placeholder="Begin by writing..."
-        onEditorStateChange={handleChange}
-        editorClassName="bg-transparent text-black font-mono w-[500px]"
-        toolbarHidden
-      />
-      <div className="min-h-screen"></div>
+    <div className="h-full w-full overflow-y-auto">
+      <div className="h-full w-full">
+        <div className="bg-transparent text-black font-mono w-[500px] mx-auto py-20">
+          <Editor
+            ref={editorRef}
+            editorState={editorState}
+            onChange={handleChange}
+            placeholder="Begin by writing..."
+          />
+        </div>
+      </div>
+      <div className="min-h-[50vh]"></div>
     </div>
   );
 }
